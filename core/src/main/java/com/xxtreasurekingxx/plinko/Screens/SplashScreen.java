@@ -1,14 +1,11 @@
 package com.xxtreasurekingxx.plinko.Screens;
 
 
+import com.badlogic.gdx.Screen;
+
 public class SplashScreen implements Screen {
     @Override
     public void show() {
-
-    }
-
-    @Override
-    public void update(float delta) {
 
     }
 
