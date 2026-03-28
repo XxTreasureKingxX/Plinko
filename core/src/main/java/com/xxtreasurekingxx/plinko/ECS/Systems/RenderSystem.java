@@ -40,6 +40,8 @@ public class RenderSystem extends EntitySystem {
     private final Box2DDebugRenderer debugRenderer;
     private ImmutableArray<Entity> animatedEntities;
     private EnumMap<AnimationType, Animation<Sprite>> animations;
+    private Entity mapEntity;
+    private MapComponent mapComponent;
 
     public RenderSystem(final Core core, final SpriteBatch batch, final World world, final FitViewport viewport, final ECSEngine engine) {
         this.core = core;
@@ -56,12 +58,15 @@ public class RenderSystem extends EntitySystem {
     @Override
     public void addedToEngine(Engine engine) {
         animatedEntities = getEngine().getEntitiesFor(Family.all(AnimationComponent.class, B2DComponent.class).get());
+        mapEntity = engine.getEntitiesFor(Family.one(MapComponent.class).get()).first();
+        mapComponent = mapEntity.getComponent(MapComponent.class);
     }
 
     public void render(float delta) {
 
         batch.setProjectionMatrix(viewport.getCamera().combined);
         batch.begin();
+        batch.draw(mapComponent.backgroundImage, 0, 0);
 
         for(Entity entity : animatedEntities) {
             final AnimationComponent animationComponent = ECSEngine.aniCmpMpr.get(entity);
@@ -84,7 +89,7 @@ public class RenderSystem extends EntitySystem {
         batch.end();
 
         debugMatrix = viewport.getCamera().combined.scl(PPM);
-        debugRenderer.render(world, debugMatrix);
+        //debugRenderer.render(world, debugMatrix);
     }
 
     public Animation<Sprite> getAnimation(AnimationType type) {

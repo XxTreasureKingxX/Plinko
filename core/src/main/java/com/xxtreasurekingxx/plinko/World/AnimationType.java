@@ -1,9 +1,16 @@
 package com.xxtreasurekingxx.plinko.World;
 
 public enum AnimationType {
-    PEG1("objects.atlas", "pegs", 1f, 0),
-    BALL1("objects.atlas", "pegs", 1f, 1),
-    MONSTER1("objects.atlas", "pegs", 1f, 2);
+    //pegs
+    PEG_BASE("objects.atlas", "pegs", 1f, 0),
+    PEG_METAL("objects.atlas", "pegs", 1f, 1),
+
+    //balls
+    BASE_BALL_ANI("objects.atlas", "pegs", 1f, 2),
+    SOUL_BALL_ANI("objects.atlas", "pegs", 1f, 3),
+
+    //monsters
+    MONSTER1("objects.atlas", "pegs", 1f, 4);
 
     final String atlas;
     final String region;

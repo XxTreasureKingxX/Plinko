@@ -11,8 +11,11 @@ import com.badlogic.gdx.maps.MapLayers;
 import com.badlogic.gdx.maps.MapObject;
 import com.badlogic.gdx.maps.MapObjects;
 import com.badlogic.gdx.maps.objects.PointMapObject;
+import com.badlogic.gdx.maps.objects.PolygonMapObject;
 import com.badlogic.gdx.maps.objects.RectangleMapObject;
 import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.maps.tiled.TiledMapImageLayer;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.xxtreasurekingxx.plinko.ECS.Components.MapComponent;
@@ -22,8 +25,6 @@ import com.xxtreasurekingxx.plinko.ECS.ECSEngine;
 import com.xxtreasurekingxx.plinko.ECS.EntityCreationFactory;import com.xxtreasurekingxx.plinko.Map.Balls;
 import com.xxtreasurekingxx.plinko.Map.Monsters;
 import com.xxtreasurekingxx.plinko.Map.Pegs;
-
-import java.util.HashMap;
 
 import static com.xxtreasurekingxx.plinko.Screens.GameScreen.currentLevel;
 
@@ -78,18 +79,20 @@ public class MapSystem extends EntitySystem {
     }
 
     private void genMap() {
-        System.out.println("Gen map");
         Entity mapEntity = engine.createEntity();
         mapCmp = engine.createComponent(MapComponent.class);
 
         mapCmp.map = assetManager.get(currentLevel.getMapPath(), TiledMap.class);
-        mapCmp.dropPoints = new HashMap<>();
         mapLayers = mapCmp.map.getLayers();
 
+        mapCmp.dropArea = new Rectangle();
+
+        getBackgroundImage();
+
         genPegs();
-        addDropZones();
+        addDropArea();
         addExitZones();
-        genBall();
+        addCollisionAreas();
 
         //add monster spawning and moving after each ball
 
@@ -97,17 +100,17 @@ public class MapSystem extends EntitySystem {
         engine.addEntity(mapEntity);
     }
 
-    public void addDropZones() {
-        //expensive?
+    public void getBackgroundImage() {
+        TiledMapImageLayer imageLayer = (TiledMapImageLayer) mapLayers.get("backgroundImage");
+        mapCmp.backgroundImage = imageLayer.getTextureRegion();
+    }
+
+    public void addDropArea() {
         MapLayer dropPointLayer = mapLayers.get("drops");
-        MapObjects dropPointObjects = dropPointLayer.getObjects();
-        for(MapObject dropPoint : dropPointObjects) {
-            if(dropPoint instanceof PointMapObject) {
-                mapCmp.dropPoints.put(
-                    new Vector2(((PointMapObject) dropPoint).getPoint().x + 1, ((PointMapObject) dropPoint).getPoint().y),
-                    entityCreationFactory.createDropZone(new Vector2(((PointMapObject) dropPoint).getPoint().x, ((PointMapObject) dropPoint).getPoint().y - 8))
-                );
-            }
+        MapObject dropArea = dropPointLayer.getObjects().get(0);
+        if(dropArea instanceof RectangleMapObject) {
+            mapCmp.dropArea = ((RectangleMapObject) dropArea).getRectangle();
+            entityCreationFactory.createDropZone(new Vector2(((RectangleMapObject) dropArea).getRectangle().x, ((RectangleMapObject) dropArea).getRectangle().y), ((RectangleMapObject) dropArea).getRectangle());
         }
     }
 
@@ -123,18 +126,23 @@ public class MapSystem extends EntitySystem {
         }
     }
 
-    public void genBall() {
-        final Array<Vector2> dropPositions = new Array<>();
-        for(Vector2 pos : mapCmp.dropPoints.keySet()) {
-            dropPositions.add(pos);
-        }
-        dropPositions.sort((a, b) -> Float.compare(a.x, b.x));
-        Vector2 ballPos = new Vector2();
-        ballPos.set(dropPositions.first());
-        //ballPos.x += 96; offset ball spawn pos
+    private void addCollisionAreas() {
+        MapLayer collisionLayer = mapLayers.get("collisions");
+        MapObjects collisions = collisionLayer.getObjects();
 
-        entityCreationFactory.createBall(ballPos, 12, 12, Balls.BASE);
+        for(MapObject object : collisions) {
+            if(object instanceof PolygonMapObject) {
+                PolygonMapObject collision = (PolygonMapObject) object;
+                entityCreationFactory.createCollisionBorder(new Vector2(collision.getPolygon().getX(), collision.getPolygon().getY()), collision.getPolygon().getVertices());
+            }
+        }
     }
+
+//    public void genBall() {
+//        Vector2 ballPos = new Vector2();
+//        mapCmp.dropArea.getCenter(ballPos);
+//        entityCreationFactory.createBall(ballPos, 12, 12, Balls.BASE);
+//    }
 
     private void genPegs() {
         MapLayer pegObjectLayer = mapLayers.get("pegs");
@@ -174,54 +182,59 @@ public class MapSystem extends EntitySystem {
             PegComponent pegCmp = ECSEngine.pegCmpMpr.get(peg);
             Array<Entity> candidates = new Array<>();
             Vector2 pegPos = ECSEngine.trnCmpMpr.get(peg).renderPosition;
-
+            pegPos.y = Math.round(pegPos.y);
             for(int j = 0; j < pegEntities.size(); j++) {
                 Entity candidate = pegEntities.get(j);
                 Vector2 candidatePos = new Vector2();
                 candidatePos.set(ECSEngine.trnCmpMpr.get(candidate).renderPosition);
 
                 float dy = candidatePos.y - pegPos.y;
-
-                if(dy <= 0 || dy >= 32) {
+                dy = Math.round(dy);
+                if(dy <= 0) {
                     continue;
                 }
-                System.out.println(dy + "dy");
-
                 candidates.add(candidate);
             }
+            if(candidates.size <= 0) {
+                continue;
+            }
 
-            //resort to for loop
+//            Array<Vector2> posArray = new Array<>();
+//            for(Entity can : candidates) {
+//                posArray.add(ECSEngine.trnCmpMpr.get(can).renderPosition);
+//            }
+//            System.out.println(pegPos + " before: " + posArray);
 
-            //next pos are inverted?
-
+            //can possible reverse candidate init order instead of "flipping" y values in array?
             candidates.sort((a, b) -> Float.compare(
                 (ECSEngine.trnCmpMpr.get(a).renderPosition.y),
                 (ECSEngine.trnCmpMpr.get(b).renderPosition.y)
             ));
 
-            candidates.sort((a, b) -> Float.compare(
+            float nextPegYLevel = ECSEngine.trnCmpMpr.get(candidates.first()).renderPosition.y;
+            Array<Entity> yLevelCandidates = new Array<>();
+
+            for(Entity entity : candidates) {
+                if(ECSEngine.trnCmpMpr.get(entity).renderPosition.y == nextPegYLevel) {
+                    yLevelCandidates.add(entity);
+                }
+            }
+
+            yLevelCandidates.sort((a, b) -> Float.compare(
                 Math.abs(ECSEngine.trnCmpMpr.get(a).renderPosition.x - pegPos.x),
                 Math.abs(ECSEngine.trnCmpMpr.get(b).renderPosition.x - pegPos.x)
             ));
 
-            for(int q = 0; q <= candidates.size-1; q++) {
-                if((ECSEngine.trnCmpMpr.get(candidates.get(q)).renderPosition.x == pegPos.x)) {
-                    System.out.println(ECSEngine.trnCmpMpr.get(candidates.get(q)).renderPosition.x + " test " + pegPos.x);
-                    candidates.removeIndex(q);
-                    System.out.println(candidates.size + " size");
+//            Array<Vector2> posArray2 = new Array<>();
+//            for(Entity can : yLevelCandidates) {
+//                posArray2.add(ECSEngine.trnCmpMpr.get(can).renderPosition);
+//            }
+//            System.out.println(pegPos + " after: " + posArray2);
+
+            for(int k = 0; k < Math.min(2, yLevelCandidates.size); k++) {
+                if(ECSEngine.trnCmpMpr.get(yLevelCandidates.get(k)).renderPosition.y == nextPegYLevel) {
+                    pegCmp.nextPegs.add(yLevelCandidates.get(k));
                 }
-            }
-
-            System.out.println(candidates.size + " can size");
-            if(candidates.size > 0) {
-                System.out.println(ECSEngine.trnCmpMpr.get(candidates.first()).renderPosition + " next pos1");
-                System.out.println(ECSEngine.trnCmpMpr.get(candidates.get(1)).renderPosition + " next pos2");
-                System.out.println(pegPos);
-            }
-
-            for(int k = 0; k < Math.min(2, candidates.size); k++) {
-                System.out.println();
-                pegCmp.nextPegs.add(candidates.get(k));
             }
         }
     }

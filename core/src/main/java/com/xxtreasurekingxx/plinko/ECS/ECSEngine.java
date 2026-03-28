@@ -16,8 +16,13 @@ public class ECSEngine extends PooledEngine {
     private final FitViewport viewport;
     private final EntityCreationFactory entityCreationFactory;
 
+    private final DataSystem dataSystem;
     private final MapSystem mapSystem;
     private final GameEventSystem gameEventSystem;
+    private final BallSystem ballSystem;
+    private final MonsterSystem monsterSystem;
+    private final UISystem uiSystem;
+    private final InventorySystem inventorySystem;
     private final PhysicsSystem physicsSystem;
     private final BodyHandleSystem bodyHandleSystem;
     private final CollisionSystem collisionSystem;
@@ -30,6 +35,7 @@ public class ECSEngine extends PooledEngine {
     public static final ComponentMapper<PegComponent> pegCmpMpr = ComponentMapper.getFor(PegComponent.class);
     public static final ComponentMapper<BallComponent> ballCmpMpr = ComponentMapper.getFor(BallComponent.class);
     public static final ComponentMapper<ExitZoneComponent> exitCmpMpr = ComponentMapper.getFor(ExitZoneComponent.class);
+    public static final ComponentMapper<MonsterComponent> msrCmpMpr = ComponentMapper.getFor(MonsterComponent.class);
 
     //TODO on game hide clear any systems that are level based for the next level selection/creation (this is rather than creating a whole new ecs each time a level is started)
 
@@ -42,19 +48,27 @@ public class ECSEngine extends PooledEngine {
         assetManager = core.getAssetManager();
 
         //Systems
+        dataSystem = new DataSystem(core);
         mapSystem = new MapSystem(this, assetManager);
         gameEventSystem = new GameEventSystem(core, this, mapSystem);
+        inventorySystem = new InventorySystem();
+        ballSystem = new BallSystem(this, gameEventSystem, viewport);
+        monsterSystem = new MonsterSystem();
+        uiSystem = new UISystem(core, viewport, this);
         physicsSystem = new PhysicsSystem();
         collisionSystem = new CollisionSystem(core, this, physicsSystem.getContactListener(), gameEventSystem); // after physics system just for access
-//        gameUISystem = new GameUISystem(core, viewport, this);
         bodyHandleSystem = new BodyHandleSystem(this, physicsSystem.getWorld());
         bodySyncSystem = new BodySyncSystem();
         renderSystem = new RenderSystem(core, batch, physicsSystem.getWorld(), viewport, this);
 
+        this.addSystem(dataSystem);
         this.addSystem(mapSystem);
         this.addSystem(gameEventSystem);
-        //pegs created
         this.addSystem(new AnimationSystem());
+        this.addSystem(inventorySystem);
+        this.addSystem(ballSystem);
+        this.addSystem(monsterSystem);
+        this.addSystem(uiSystem);
         this.addSystem(collisionSystem); //collisions happen DURING physics
         this.addSystem(physicsSystem);
         this.addSystem(bodyHandleSystem);
@@ -65,8 +79,10 @@ public class ECSEngine extends PooledEngine {
     public void render(float delta) {
         renderSystem.render(delta);
 
-        //batch.setProjectionMatrix(gameUI.getStage().getCamera().combined);
-        //gameUI.getStage().draw();
+        viewport.apply();
+        uiSystem.getStage().act();
+        batch.setProjectionMatrix(uiSystem.getStage().getCamera().combined);
+        uiSystem.getStage().draw();
     }
 
     public void resize(int width, int height) {
@@ -74,7 +90,7 @@ public class ECSEngine extends PooledEngine {
     }
 
     public void hide() {
-        //core.getInputMultiplexer().removeProcessor(gameUISystem.getStage());
+        core.getInputMultiplexer().removeProcessor(uiSystem.getStage());
     }
 
     public EntityCreationFactory getFactory() {

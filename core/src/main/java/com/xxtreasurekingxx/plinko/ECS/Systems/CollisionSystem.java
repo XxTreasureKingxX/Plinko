@@ -3,18 +3,24 @@ package com.xxtreasurekingxx.plinko.ECS.Systems;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
+import com.badlogic.ashley.core.Family;
+import com.badlogic.gdx.utils.ObjectIntMap;
 import com.xxtreasurekingxx.plinko.Core;
-import com.xxtreasurekingxx.plinko.ECS.Components.B2DComponent;
-import com.xxtreasurekingxx.plinko.ECS.Components.BallComponent;
-import com.xxtreasurekingxx.plinko.ECS.Components.ExitZoneComponent;
-import com.xxtreasurekingxx.plinko.ECS.Components.TransformComponent;import com.xxtreasurekingxx.plinko.ECS.ECSEngine;
+import com.xxtreasurekingxx.plinko.ECS.Components.*;
+import com.xxtreasurekingxx.plinko.ECS.ECSEngine;
+import com.xxtreasurekingxx.plinko.Map.Item;
+import com.xxtreasurekingxx.plinko.Map.Pegs;
 import com.xxtreasurekingxx.plinko.World.WorldContactListener;
+
+import static com.xxtreasurekingxx.plinko.Map.Resources.METAL_HUNK;
 
 public class CollisionSystem extends EntitySystem implements WorldContactListener.CollisionListener {
     private final ECSEngine engine;
     private final Core core;
     private final GameEventSystem gameEventSystem;
     private PhysicsSystem physicsSystem;
+
+    private InventoryComponent inventoryComponent;
 
     public CollisionSystem(final Core core, final ECSEngine engine, final WorldContactListener contactListener, final GameEventSystem gameEventSystem) {
         this.engine = engine;
@@ -26,6 +32,9 @@ public class CollisionSystem extends EntitySystem implements WorldContactListene
     @Override
     public void addedToEngine(Engine engine) {
         physicsSystem = engine.getSystem(PhysicsSystem.class);
+
+        Entity inventoryEntity = engine.getEntitiesFor(Family.all(InventoryComponent.class).get()).first();
+        inventoryComponent = inventoryEntity.getComponent(InventoryComponent.class);
     }
 
     @Override
@@ -42,15 +51,40 @@ public class CollisionSystem extends EntitySystem implements WorldContactListene
         final ExitZoneComponent exitCmpA = ECSEngine.exitCmpMpr.get(entityA);
         final ExitZoneComponent exitCmpB = ECSEngine.exitCmpMpr.get(entityB);
 
-        if((ballCmpA != null && exitCmpB != null) || (ballCmpB != null && exitCmpA != null)) {
-            //ball collides with exit so delete ball and init phase for next drop
-            if(ballCmpA != null) {
-                gameEventSystem.initDropPhase();
-            } else if(ballCmpB != null) {
-                gameEventSystem.initDropPhase();
+        final MonsterComponent MCA = ECSEngine.msrCmpMpr.get(entityA);
+        final MonsterComponent MCB = ECSEngine.msrCmpMpr.get(entityB);
+
+        final PegComponent PCA = ECSEngine.pegCmpMpr.get(entityA);
+        final PegComponent PCB = ECSEngine.pegCmpMpr.get(entityB);
+
+        if((ballCmpA != null && PCB != null) || (ballCmpB != null && PCA != null)) {
+            if(PCA != null) {
+                if(PCA.type == Pegs.METAL) {
+                    inventoryComponent.inventory.getAndIncrement(METAL_HUNK, 0, 1);
+                    inventoryComponent.updateInventoryUI = true;
+                }
+            } else {
+
             }
         }
-        //somewhere here: if ball collides with exit zones (and balls are left to drop): initialize drop phase (gameEventSystem.initDropPhase();)
+
+        if((ballCmpA != null && MCB != null) || (ballCmpB != null && MCA != null)) {
+            if(MCA != null) {
+                MCA.health -= ballCmpB.damage;
+            } else {
+                MCB.health -= ballCmpA.damage;
+            }
+        }
+
+        if((ballCmpA != null && exitCmpB != null) || (ballCmpB != null && exitCmpA != null)) {
+            if(ballCmpA != null) {
+                BCA.needsDelete = true;
+                gameEventSystem.moveMonsters();
+            } else {
+                BCB.needsDelete = true;
+                gameEventSystem.moveMonsters();
+            }
+        }
     }
 
     @Override

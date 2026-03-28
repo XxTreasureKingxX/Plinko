@@ -8,10 +8,12 @@ import com.xxtreasurekingxx.plinko.Map.Monsters;
 public class MonsterComponent implements Component, Pool.Poolable {
     public Entity peg;
     public Monsters type;
+    public int health;
 
     @Override
     public void reset() {
         peg = null;
         type = null;
+        health = 0;
     }
 }

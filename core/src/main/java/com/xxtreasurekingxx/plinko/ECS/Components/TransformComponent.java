@@ -9,11 +9,13 @@ public class TransformComponent implements Component, Pool.Poolable {
     public Vector2 renderPosition;
     public Vector2 transformPosition;
     public float angle;
+    public boolean needsTransform;
 
     @Override
     public void reset() {
         renderPosition = new Vector2(0, 0);
         transformPosition = new Vector2(0, 0);
         angle = 0;
+        needsTransform = false;
     }
 }

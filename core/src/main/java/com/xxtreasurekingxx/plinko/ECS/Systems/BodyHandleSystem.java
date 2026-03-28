@@ -35,12 +35,20 @@ public class BodyHandleSystem extends IteratingSystem {
             createBody(entity, b2DComponent, transformComponent);
         }
 
-        if(b2DComponent.needsTransform) {
+        if(transformComponent.needsTransform) {
             transformBody(b2DComponent, transformComponent);
+        }
+
+        if(b2DComponent.bodyTypeChanged) {
+            setBodyType(b2DComponent);
         }
 
         if(b2DComponent.updateCollideStatus) {
             updateCollideStatus(b2DComponent);
+        }
+
+        if(b2DComponent.pauseBody) {
+            pauseBody(b2DComponent);
         }
     }
 
@@ -59,10 +67,11 @@ public class BodyHandleSystem extends IteratingSystem {
         b2DComponent.body.setAngularDamping(1);
 
         FixtureDef fixtureDef = new FixtureDef();
+        fixtureDef.isSensor = b2DComponent.isSensor;
         fixtureDef.shape = b2DComponent.bodyShape;
         fixtureDef.filter.categoryBits = BIT_OBJECT;
         fixtureDef.filter.maskBits = -1;
-        fixtureDef.restitution = 0.5f;
+        fixtureDef.restitution = 0.75f;
         fixtureDef.density = 1f;
 
         b2DComponent.body.createFixture(fixtureDef);
@@ -77,10 +86,15 @@ public class BodyHandleSystem extends IteratingSystem {
     }
 
     private void transformBody(final B2DComponent b2DComponent, final TransformComponent transformComponent) {
-        b2DComponent.needsTransform = false;
+        transformComponent.needsTransform = false;
         b2DComponent.body.setTransform(toMeters(transformComponent.transformPosition.x), toMeters(transformComponent.transformPosition.y), 0);
         b2DComponent.body.setLinearVelocity(0, 0);
         b2DComponent.body.setAngularVelocity(0);
+    }
+
+    private void setBodyType(final B2DComponent b2DComponent) {
+        b2DComponent.bodyTypeChanged = false;
+        b2DComponent.body.setType(b2DComponent.bodyType);
     }
 
     private void updateCollideStatus(final B2DComponent b2DComponent) {
@@ -94,5 +108,11 @@ public class BodyHandleSystem extends IteratingSystem {
             }
             fixture.setFilterData(filter);
         }
+    }
+
+    private void pauseBody(final B2DComponent b2DComponent) {
+        b2DComponent.pauseBody = false;
+        b2DComponent.body.setLinearVelocity(0, 0);
+        b2DComponent.body.setAngularVelocity(0);
     }
 }

@@ -9,6 +9,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.xxtreasurekingxx.plinko.Core;
 import com.xxtreasurekingxx.plinko.ECS.ECSEngine;
+import com.xxtreasurekingxx.plinko.ECS.Systems.UISystem;
 import com.xxtreasurekingxx.plinko.Map.Levels;
 
 import static com.xxtreasurekingxx.plinko.Core.*;
@@ -41,7 +42,7 @@ public class GameScreen implements Screen, InputProcessor {
 
     @Override
     public void render(float delta) {
-        ScreenUtils.clear(0.5f, 0.33f, 0.66f, 0);
+        ScreenUtils.clear(0.7f, 0.7f, 0.7f, 0);
         viewport.apply();
 
         accummulator += delta * gameSpeed;
@@ -77,7 +78,7 @@ public class GameScreen implements Screen, InputProcessor {
     @Override
     public void dispose() {
         System.out.println("Game Screen Disposed");
-        //engine.getSystem(GameUISystem.class).getStage().dispose();
+        engine.getSystem(UISystem.class).getStage().dispose();
     }
 
     @Override

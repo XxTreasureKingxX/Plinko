@@ -17,11 +17,11 @@ import com.xxtreasurekingxx.plinko.Screens.SplashScreen;
 
 /** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
 public class Core extends Game {
-    public static final int GAMEH = 360;
+    public static final int GAMEH = 368;
     public static final int GAMEW = 640;
     public static final float FPS = 1 / 60f;
     public static final float tickRate = 1 / 20f;
-    public static final int gameSpeed = 10; //default 1x speed (1)
+    public static final int gameSpeed = 3; //default 1x speed (1)
     public static final int gridSize = 16;
     public static final int PPM = 32;
 
@@ -36,6 +36,7 @@ public class Core extends Game {
     private SpriteBatch batch;
     private AssetManager assetManager;
     private InputManager inputManager;
+    private GameData data;
 
     private InputMultiplexer inputMultiplexer;
 
@@ -48,6 +49,7 @@ public class Core extends Game {
         batch = new SpriteBatch();
         assetManager = new AssetManager();
         assetManager.setLoader(TiledMap.class, new TmxMapLoader(new InternalFileHandleResolver()));
+        data = new GameData();
 
         splashScreen = new SplashScreen();
         loadingScreen = new LoadingScreen(this);
@@ -84,6 +86,10 @@ public class Core extends Game {
 
     public InputMultiplexer getInputMultiplexer() {
         return inputMultiplexer;
+    }
+
+    public GameData getData() {
+        return data;
     }
 
     @Override

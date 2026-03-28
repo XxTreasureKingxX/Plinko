@@ -2,6 +2,10 @@ package com.xxtreasurekingxx.plinko.ECS;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
+import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.math.Polygon;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.CircleShape;
@@ -14,6 +18,7 @@ import com.xxtreasurekingxx.plinko.Map.Pegs;
 
 import static com.xxtreasurekingxx.plinko.Core.gridSize;
 import static com.xxtreasurekingxx.plinko.Core.toMeters;
+import static com.xxtreasurekingxx.plinko.Screens.GameScreen.currentLevel;
 import static com.xxtreasurekingxx.plinko.World.AnimationType.*;
 
 public class EntityCreationFactory {
@@ -43,11 +48,12 @@ public class EntityCreationFactory {
         ball.add(transCmp);
 
         AnimationComponent aniCmp = engine.createComponent(AnimationComponent.class);
-        aniCmp.type = BALL1;
+        aniCmp.type = type.getAnimation();
         ball.add(aniCmp);
 
         BallComponent ballComponent = engine.createComponent(BallComponent.class);
         ballComponent.type = type;
+        ballComponent.damage = type.getDamage();
         ball.add(ballComponent);
 
         engine.addEntity(ball);
@@ -73,7 +79,7 @@ public class EntityCreationFactory {
         peg.add(transCmp);
 
         AnimationComponent aniCmp = engine.createComponent(AnimationComponent.class);
-        aniCmp.type = PEG1;
+        aniCmp.type = type.getAniType();
         peg.add(aniCmp);
 
         PegComponent pegCmp = engine.createComponent(PegComponent.class);
@@ -112,18 +118,25 @@ public class EntityCreationFactory {
         MonsterComponent monsterCmp = engine.createComponent(MonsterComponent.class);
         monsterCmp.type = type;
         monsterCmp.peg = attachedPeg;
+        monsterCmp.health = type.getHealth();
         monster.add(monsterCmp);
 
         engine.addEntity(monster);
     }
 
-    public Entity createDropZone(final Vector2 pos) {
+    public Entity createDropZone(final Vector2 pos, final Rectangle rect) {
         Entity drop = engine.createEntity();
+
+//        Vector2 pos = new Vector2();
+//        pos.set(rect.getCenter(pos));
+        pos.x += rect.width/2;
+        pos.y += rect.height/2;
 
         B2DComponent b2DCmp = engine.createComponent(B2DComponent.class);
         b2DCmp.needsBody = true;
-        b2DCmp.width = toMeters(gridSize * 2);
-        b2DCmp.height = toMeters(gridSize/4f);
+        b2DCmp.isSensor = true;
+        b2DCmp.width = toMeters(rect.getWidth());
+        b2DCmp.height = toMeters(rect.getHeight());
         b2DCmp.bodyType = BodyDef.BodyType.StaticBody;
         PolygonShape shape = new PolygonShape();
         shape.setAsBox(b2DCmp.width/2, b2DCmp.height/2);
@@ -142,6 +155,8 @@ public class EntityCreationFactory {
 
     public void createExitZone(final Vector2 pos, final float width, final float height) {
         Entity exit = engine.createEntity();
+
+        pos.y -= 50;
 
         B2DComponent b2DCmp = engine.createComponent(B2DComponent.class);
         b2DCmp.needsBody = true;
@@ -162,5 +177,28 @@ public class EntityCreationFactory {
         exit.add(exitCmp);
 
         engine.addEntity(exit);
+    }
+
+    public void createCollisionBorder(final Vector2 pos, final float[] vertices) {
+        Entity collision = engine.createEntity();
+
+        for(int i = 0; i < vertices.length; i++) {
+            vertices[i] = toMeters(vertices[i]);
+        }
+
+        B2DComponent b2DCmp = engine.createComponent(B2DComponent.class);
+        b2DCmp.needsBody = true;
+        b2DCmp.bodyType = BodyDef.BodyType.StaticBody;
+        PolygonShape shape = new PolygonShape();
+        shape.set(vertices);
+        b2DCmp.bodyShape = shape;
+        collision.add(b2DCmp);
+
+        TransformComponent trnCmp = engine.createComponent(TransformComponent.class);
+        trnCmp.renderPosition = pos;
+        trnCmp.transformPosition = pos;
+        collision.add(trnCmp);
+
+        engine.addEntity(collision);
     }
 }
